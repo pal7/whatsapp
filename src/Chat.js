@@ -1,132 +1,120 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from "react";
 import "./Chat.css";
-import { Avatar, IconButton } from '@material-ui/core';
-import { SearchOutlined, AttachFile, MoreVert } from '@material-ui/icons';
-import InsertEmoticonIcon from "@material-ui/icons/InsertEmoticon";
+import { Avatar, IconButton } from "@material-ui/core";
+import SearchOutlined from "@material-ui/icons/SearchOutlined";
+import AttachFile from "@material-ui/icons/AttachFile";
+import MoreVertIcon from "@material-ui/icons/MoreVert";
+import InsertEmotiIcon from "@material-ui/icons/InsertEmoticon";
 import MicIcon from "@material-ui/icons/Mic";
-import axios from "./axios";
 import { useParams } from "react-router-dom";
-import db from './firebase';
+import db from "./firebase";
+import firebase from "firebase";
+import { useStateValue } from "./StateProvider";
+function Chat() {
+  // track of messages from sender at input
+  //    random avatar  for every room
+  // const [seed, setSeed] = useState(' ');
+  //   roomid for each room topull data using react-router-dom
+  const [input, setInput] = useState("");
 
-function Chat({ messages }) {
+  const { roomId } = useParams();
+  const [roomName, setRoomName] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [{ user }, dispatch] = useStateValue();
 
-    const [input, setInput] = useState("");
-    const [seed, setSeed] = useState("");
-    const { roomId } = useParams();
-    const [roomName, setRoomName] = useState("");
-    
-    useEffect(() => {
-        if (roomId) {
-            db.collection('rooms').doc(roomId).onSnapshot((snapshot) =>
-                    setRoomName(snapshot.data().name));
-        }
-    }, [roomId]);
-    // any time you use a variable inside a useeffect() you need to include it as a dependency inside []
+  //when clicked on any room in sidebar  it shows messages with that room
+  useEffect(() => {
+    if (roomId) {
+      db.collection("rooms")
+        .doc(roomId)
+        .onSnapshot((snapshot) => setRoomName(snapshot.data().name));
 
+      db.collection("rooms")
+        .doc(roomId)
+        .collection("messages")
+        .orderBy("timestamp", "asc")
+        .onSnapshot((snapshot) =>
+          setMessages(snapshot.docs.map((doc) => doc.data()))
+        );
+    }
+  }, [roomId]);
 
-    useEffect(() => {
-        setSeed(Math.floor(Math.random() * 5000));
-    }, [roomId]);
+  const sendMessage = (e) => {
+    e.preventDefault();
+    console.log("youtyped", input);
+    db.collection("rooms").doc(roomId).collection("messages").add({
+      message: input,
+      name: user.displayName,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    setInput("");
+  };
 
-    const sendMessage = (e) => {
-        e.preventDefault();
-        //prevents refresh and gets the message directly 
-        //console.log('you typed >>', input);
-    
-        //await
-            axios.post('/messages/new', {
-            message : input,
-            name : "DEMO",
-            timestamp : "just now",
-            received : false
-        });
-
-        setInput("");
-        //this clears the input box after hitting enter key
-    };
-
-    return (
-        <div className = "Chat">
-            <div className = "chat__header">
-                <Avatar src={`https://avatars.dicebear.com/api/bottts/${seed}.svg`}/>
-
-                <div className = "chat__headerInfo">
-                    <h3> {roomName} </h3>
-                    <p>Last seen at...</p>
-                </div>
-
-                <div className = "chat__headerRight">
-                    <IconButton>
-                        <SearchOutlined />
-                    </IconButton>
-
-                    <IconButton>
-                        <AttachFile />
-                    </IconButton>
-                    
-                    <IconButton>
-                        <MoreVert />
-                    </IconButton>
-                </div>
-            
-            </div>
-                        
-            <div className="chat__body">
-                {/* {props &&  */}
-                {messages.map( (message) => (
-                    <p className = {`chat__message ${message.received && "chat__receiver"}`}>
-                        {/* add authentication  */}
-                        <span className = "chat__name">
-                            {message.name}
-                        </span>
-                       
-                            {message.message}
-                       
-                        <span className = "chat__timestamp">
-                            {message.timestamp}
-                        </span>
-                    </p>
-                ))}
-            </div>
-
-                    
-                {/* <p className = "chat__message chat__receiver">
-                    <span className = "chat__name">
-                        Supriya
-                    </span>
-                        This is a message
-                    <span className = "chat__timestamp">
-                        {new Date().toUTCString()}
-                    </span>
-                </p>
-
-                <p className = "chat__message">
-                    <span className = "chat__name">
-                        Ashwin
-                    </span>
-                        This is a message
-                    <span className = "chat__timestamp">
-                        {new Date().toUTCString()}
-                    </span>
-                </p> */}
-            
-
-            <div className = "chat__footer">
-                <InsertEmoticonIcon />
-                <form>
-                    <input 
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder = "Type a message" 
-                        type ="text" />
-
-                    <button onClick = {sendMessage} type= "submit"> Send a message</button>
-
-                </form>
-                <MicIcon />
-            </div>
+  // creating random avatars using seed state
+  return (
+    <div className="chat">
+      <div className="chat__header">
+        <Avatar
+          src={`https://avatars.dicebear.com/api/human/${Math.floor(
+            Math.random() * 5000
+          )}.svg`}
+        />
+        <div className="chat__headerInfo">
+          <h3>{roomName}</h3>
+          <p>
+            Last Seen at{"  "}
+            {new Date(
+              messages[messages.length - 1]?.timestamp?.toDate()
+            ).toUTCString()}
+          </p>
         </div>
-    );
+        <div className="chat__headerRight">
+          <IconButton>
+            <SearchOutlined />
+          </IconButton>
+          <IconButton>
+            <AttachFile />
+          </IconButton>
+          <IconButton>
+            <MoreVertIcon />
+          </IconButton>
+        </div>
+      </div>
+      <div className="chat__body">
+        {messages.map((message) => (
+          <p
+            className={`chat__message ${
+              message.name === user.displayName && "chat__receiver"
+            }`}
+          >
+            <span className="chat__name">{message.name}</span>
+            {message.message}
+            <span className="chat__timestamp">
+              {new Date(
+                messages[messages.length - 1]?.timestamp?.toDate()
+              ).toUTCString()}
+            </span>
+          </p>
+        ))}
+        {/* true=if display.name===message.name  then change the bg-color to green*/}
+      </div>
+      <div className="chat__footer">
+        <InsertEmotiIcon />
+        <form>
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type a message"
+            type="text"
+          />
+          <button onClick={sendMessage} type="submit">
+            Send a message
+          </button>
+        </form>
+        <MicIcon />
+      </div>
+    </div>
+  );
 }
 
 export default Chat;

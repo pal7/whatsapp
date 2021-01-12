@@ -1,11 +1,11 @@
 import React from "react";
-import "./login.css";
+import "./Login.css";
 import { Button } from "@material-ui/core";
 import { auth, provider } from "./firebase";
 import { actionTypes } from "./reducer";
 import { useStateValue } from "./StateProvider";
 
-function login() {
+function Login() {
   const [{}, dispatch] = useStateValue();
 
   const signIn = () => {
@@ -37,4 +37,4 @@ function login() {
   );
 }
 
-export default login;
+export default Login;
